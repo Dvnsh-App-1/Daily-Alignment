@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Cosmic Align</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Outfit:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ob:#06070b; --ch:#0c0e14; --sf:#11141c; --sf2:#161a24; --sf3:#1c2230;
+  --bd:#ffffff0c; --bd2:#ffffff14; --bd3:#ffffff22;
+  --tp:#e8e4dc; --ts:#8a8a9a; --tt:#4a4a5a; --tx:#2a2a35;
+  --acc:#7a9fff; --acc2:#a0c0ff; --moon:#c8c0b0;
+  --gold:#d4a85a; --rose:#d47a90; --grn:#5aaf80; --pur:#9a7fd4; --amb:#d4944a;
+  --warn:#c97a5a;
+}
+html,body{height:100%;background:var(--ob);color:var(--tp);font-family:'Outfit',sans-serif;font-weight:300;font-size:14px;line-height:1.7;-webkit-font-smoothing:antialiased}
+body{overflow-x:hidden}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+
+/* AMBIENT — shifts subtly with time of day via JS */
+.ambient{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.amb-blob{position:absolute;border-radius:50%;filter:blur(160px);opacity:.05;transition:all 8s ease}
+.amb-1{width:600px;height:600px;background:var(--acc);top:-200px;right:-150px}
+.amb-2{width:400px;height:400px;background:#5020c0;bottom:-100px;left:-50px}
+.amb-3{width:300px;height:300px;background:var(--gold);top:40%;right:30%}
+
+/* MAIN COLUMN */
+#stage{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:60px 28px 120px}
+
+/* TYPOGRAPHY */
+.serif{font-family:'Cormorant Garamond',serif;font-weight:300;letter-spacing:-.3px}
+.lbl{font-size:10px;font-weight:500;letter-spacing:2.5px;text-transform:uppercase;color:var(--tt)}
+.disp{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:300;letter-spacing:-1px;line-height:1.1}
+.h2{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;letter-spacing:-.3px;line-height:1.2}
+.h3{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:400}
+.body{font-size:13px;color:var(--ts);line-height:1.7}
+.body-sm{font-size:12px;color:var(--ts)}
+.body-xs{font-size:11px;color:var(--tt)}
+.italic{font-style:italic}
+
+/* SECTIONS — large breathing space between */
+.section{margin-bottom:64px;animation:rise .8s ease forwards;opacity:0}
+.section.s1{animation-delay:.05s}
+.section.s2{animation-delay:.15s}
+.section.s3{animation-delay:.25s}
+.section.s4{animation-delay:.35s}
+.section.s5{animation-delay:.45s}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--bd2),transparent);margin:48px 0}
+
+/* THE NOW */
+.moment-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;flex-wrap:wrap;gap:16px}
+.hora-arc{position:relative;width:100%;height:38px;margin:14px 0 24px}
+.hora-line{position:absolute;left:0;right:0;top:50%;height:1px;background:linear-gradient(90deg,transparent 0%,var(--bd2) 20%,var(--bd2) 80%,transparent 100%)}
+.hora-marker{position:absolute;top:50%;width:8px;height:8px;border-radius:50%;background:var(--gold);transform:translate(-50%,-50%);box-shadow:0 0 14px var(--gold)}
+.hora-marker.moon{background:var(--moon);box-shadow:0 0 14px var(--moon)}
+.hora-tick{position:absolute;top:calc(50% + 12px);font-size:9px;color:var(--tx);letter-spacing:1px;transform:translateX(-50%)}
+
+.invitation{padding:32px 0 8px}
+.invit-quality{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
+.invit-text{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;line-height:1.25;letter-spacing:-.5px;color:var(--tp);margin-bottom:14px}
+.invit-suggests{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.suggest-chip{font-size:11px;color:var(--ts);padding:5px 12px;border:1px solid var(--bd);border-radius:20px;background:rgba(255,255,255,.015);cursor:pointer;transition:all .25s}
+.suggest-chip:hover{border-color:var(--bd3);color:var(--tp)}
+
+.panchang-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px 14px;margin-top:24px}
+.pan-cell{display:flex;flex-direction:column;gap:3px}
+.pan-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--tx)}
+.pan-val{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--tp);font-weight:400}
+.pan-meta{font-size:10px;color:var(--tt)}
+
+/* WITNESSING — single input */
+.witness-input-wrap{position:relative;margin-top:14px}
+.witness-input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--bd2);color:var(--tp);font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;padding:14px 4px;outline:none;transition:border-color .3s}
+.witness-input::placeholder{color:var(--tx);font-style:italic}
+.witness-input:focus{border-bottom-color:var(--bd3)}
+.witness-hint{font-size:11px;color:var(--tx);margin-top:8px;font-style:italic}
+
+#suggest-list{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--ch);border:1px solid var(--bd2);border-radius:10px;max-height:280px;overflow-y:auto;z-index:50;display:none;box-shadow:0 12px 32px rgba(0,0,0,.5)}
+#suggest-list.on{display:block}
+.sg-item{padding:11px 16px;cursor:pointer;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;transition:background .15s}
+.sg-item:hover{background:var(--sf2)}
+.sg-item:last-child{border-bottom:none}
+.sg-name{font-size:13px;color:var(--tp)}
+.sg-meta{font-size:10px;color:var(--tt);white-space:nowrap}
+.sg-cat{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx);margin-right:10px}
+
+/* PREVIEW (the alignment reading) */
+.preview{margin-top:18px;padding:22px;background:var(--sf);border:1px solid var(--bd2);border-radius:14px;animation:rise .35s ease}
+.prev-name{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;color:var(--tp);margin-bottom:4px}
+.prev-sub{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--tt);margin-bottom:16px}
+.prev-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.prev-stat{font-size:11px;color:var(--ts);padding:3px 10px;border-radius:20px;background:var(--ob);border:1px solid var(--bd)}
+.prev-stat strong{color:var(--tp);font-weight:500}
+
+.prev-row{display:flex;gap:14px;margin:10px 0;align-items:flex-start;font-size:12px}
+.prev-row-lbl{font-size:9px;letter-spacing:1.8px;text-transform:uppercase;color:var(--tt);min-width:90px;padding-top:4px;flex-shrink:0}
+.prev-tags{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.prev-tag{font-size:11px;padding:2px 10px;border-radius:20px;color:var(--ts);background:var(--ob);border:1px solid var(--bd)}
+.prev-tag.s{background:rgba(90,175,128,.06);border-color:rgba(90,175,128,.18);color:var(--grn)}
+.prev-tag.w{background:rgba(212,148,74,.06);border-color:rgba(212,148,74,.18);color:var(--amb)}
+.prev-tag.m{background:rgba(122,159,255,.06);border-color:rgba(122,159,255,.18);color:var(--acc)}
+
+.alignment{margin:20px 0 16px;padding:14px 16px;border-radius:10px;border-left:2px solid var(--gold);background:rgba(212,168,90,.03)}
+.alignment.aligned{border-left-color:var(--grn);background:rgba(90,175,128,.03)}
+.alignment.misaligned{border-left-color:var(--warn);background:rgba(201,122,90,.04)}
+.align-label{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:6px;color:var(--gold)}
+.aligned .align-label{color:var(--grn)}
+.misaligned .align-label{color:var(--warn)}
+.align-note{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:300;line-height:1.5;color:var(--tp);font-style:italic}
+
+.prev-actions{display:flex;align-items:center;gap:14px;margin-top:18px;padding-top:18px;border-top:1px solid var(--bd)}
+.qty-ctl{display:flex;align-items:center;gap:10px}
+.qty-btn{width:28px;height:28px;border-radius:50%;border:1px solid var(--bd2);background:transparent;color:var(--ts);cursor:pointer;font-size:14px;line-height:1;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.qty-btn:hover{background:var(--sf2);color:var(--tp);border-color:var(--bd3)}
+.qty-val{font-size:13px;color:var(--tp);min-width:60px;text-align:center}
+
+/* BUTTONS */
+.btn{padding:8px 18px;border-radius:7px;border:1px solid var(--bd2);background:transparent;color:var(--ts);font-family:'Outfit',sans-serif;font-size:12px;cursor:pointer;transition:all .25s;letter-spacing:.3px}
+.btn:hover{background:var(--sf2);color:var(--tp);border-color:var(--bd3)}
+.btn-pr{background:rgba(122,159,255,.08);border-color:rgba(122,159,255,.25);color:var(--acc)}
+.btn-pr:hover{background:rgba(122,159,255,.14)}
+.btn-gold{background:rgba(212,168,90,.06);border-color:rgba(212,168,90,.22);color:var(--gold)}
+.btn-gold:hover{background:rgba(212,168,90,.12)}
+.btn-ghost{border:none;color:var(--tt);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;padding:6px 10px;background:transparent;cursor:pointer}
+.btn-ghost:hover{color:var(--ts)}
+
+/* TODAY's COLUMN — woven log */
+.log-list{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+.log-entry{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:10px;background:var(--sf);border:1px solid var(--bd);transition:all .2s}
+.log-entry:hover{border-color:var(--bd2)}
+.log-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--sf2)}
+.log-icon svg{width:14px;height:14px;stroke:var(--ts);fill:none;stroke-width:1.5}
+.log-icon.food{background:rgba(90,175,128,.08)}.log-icon.food svg{stroke:var(--grn)}
+.log-icon.move{background:rgba(212,148,74,.08)}.log-icon.move svg{stroke:var(--amb)}
+.log-icon.mind{background:rgba(154,127,212,.08)}.log-icon.mind svg{stroke:var(--pur)}
+.log-icon.rest{background:rgba(122,159,255,.08)}.log-icon.rest svg{stroke:var(--acc)}
+.log-body{flex:1;min-width:0}
+.log-name{font-size:13px;color:var(--tp);margin-bottom:2px}
+.log-meta{font-size:11px;color:var(--tt)}
+.log-align{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 8px;border-radius:20px;flex-shrink:0}
+.log-align.a{color:var(--grn);background:rgba(90,175,128,.08)}
+.log-align.n{color:var(--gold);background:rgba(212,168,90,.06)}
+.log-align.m{color:var(--warn);background:rgba(201,122,90,.06)}
+.log-del{background:none;border:none;color:var(--tx);cursor:pointer;font-size:18px;padding:0 4px;transition:color .2s;flex-shrink:0;line-height:1}
+.log-del:hover{color:var(--warn)}
+
+.log-empty{padding:24px 0;text-align:center;font-style:italic;color:var(--tx);font-size:13px}
+
+/* COHERENCE — the day's read */
+.coh-block{padding:24px 0}
+.coh-row{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.coh-bar{flex:1;height:2px;background:var(--bd);border-radius:2px;overflow:hidden}
+.coh-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--grn));border-radius:2px;transition:width 1s ease}
+.coh-num{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;color:var(--tp);min-width:40px;text-align:right}
+.coh-poem{margin-top:18px;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300;line-height:1.6;color:var(--ts);font-style:italic}
+
+.flow-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+
+/* SUBTLE INPUTS — body's response */
+.body-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--bd)}
+.body-row:last-child{border-bottom:none}
+.body-row-lbl{font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:var(--tt);min-width:110px}
+.body-row-input{flex:1;display:flex;align-items:center;gap:10px}
+input[type=range]{-webkit-appearance:none;height:2px;background:var(--bd2);border-radius:2px;flex:1;cursor:pointer;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--tp);cursor:pointer}
+.body-row-val{font-size:11px;color:var(--ts);min-width:24px;text-align:right}
+.mood-row{display:flex;flex-wrap:wrap;gap:6px}
+.mood-chip{font-size:11px;color:var(--ts);padding:4px 11px;border:1px solid var(--bd);border-radius:20px;cursor:pointer;transition:all .2s;background:transparent}
+.mood-chip:hover{border-color:var(--bd2)}
+.mood-chip.sel{background:rgba(122,159,255,.08);border-color:rgba(122,159,255,.25);color:var(--acc)}
+
+textarea{width:100%;background:transparent;border:none;border-bottom:1px solid var(--bd2);color:var(--tp);font-family:'Outfit',sans-serif;font-size:13px;padding:8px 4px;outline:none;resize:vertical;min-height:48px;line-height:1.7}
+textarea::placeholder{color:var(--tx);font-style:italic}
+textarea:focus{border-bottom-color:var(--bd3)}
+
+/* RHYTHM READ */
+.rhythm-card{padding:20px;background:var(--sf);border:1px solid var(--bd);border-radius:14px;margin-bottom:14px}
+.rhythm-week{display:flex;gap:6px;margin:14px 0}
+.week-cell{flex:1;height:36px;border-radius:5px;background:var(--bd);position:relative;cursor:default;transition:transform .15s}
+.week-cell:hover{transform:scale(1.04)}
+.week-cell-lbl{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--tx);letter-spacing:.5px}
+
+/* GATE — stillness button */
+.gate{margin-top:48px;text-align:center;padding:32px 0}
+.gate-btn{padding:14px 36px;background:transparent;border:1px solid var(--bd2);border-radius:30px;color:var(--ts);font-family:'Cormorant Garamond',serif;font-size:16px;letter-spacing:1px;cursor:pointer;transition:all .35s}
+.gate-btn:hover{border-color:var(--bd3);color:var(--tp);background:rgba(122,159,255,.03)}
+
+/* CONSCIOUSNESS MODE */
+#cm{position:fixed;inset:0;background:rgba(4,5,10,.98);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;gap:48px;padding:24px}
+#cm.on{display:flex}
+.cm-data{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;color:rgba(232,228,220,.5);text-align:center}
+.br-ring{width:200px;height:200px;border-radius:50%;border:1px solid rgba(200,200,220,.06);display:flex;align-items:center;justify-content:center}
+.br-inner{width:140px;height:140px;border-radius:50%;border:1px solid rgba(200,200,220,.1);display:flex;align-items:center;justify-content:center;animation:breathe 8s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(.85);border-color:rgba(200,200,220,.08)}45%{transform:scale(1.12);border-color:rgba(122,159,255,.22)}}
+.br-dot{width:8px;height:8px;border-radius:50%;background:var(--acc);opacity:.5;animation:breathe 8s ease-in-out infinite}
+.cm-prompt{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:300;color:rgba(160,168,184,.55);line-height:1.6;text-align:center;max-width:380px;font-style:italic;transition:opacity .8s}
+.cm-exit{color:rgba(138,138,154,.3);font-size:11px;letter-spacing:2px;text-transform:uppercase;background:none;border:none;cursor:pointer;padding:8px 16px}
+
+/* SETTINGS */
+#settings{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;display:none;align-items:center;justify-content:center;padding:24px}
+#settings.on{display:flex}
+.set-box{background:var(--ch);border:1px solid var(--bd2);border-radius:16px;padding:32px;width:420px;max-width:92vw}
+input[type=text],input[type=password],input[type=number]{width:100%;background:var(--sf2);border:1px solid var(--bd);border-radius:8px;color:var(--tp);font-family:'Outfit',sans-serif;font-size:13px;padding:10px 14px;outline:none;transition:border-color .2s;margin-top:6px}
+input[type=text]:focus,input[type=password]:focus,input[type=number]:focus{border-color:var(--bd2)}
+
+/* ONBOARDING */
+#ob{position:fixed;inset:0;background:var(--ob);z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;transition:opacity .8s}
+#ob.hide{opacity:0;pointer-events:none}
+.ob-content{max-width:480px;display:flex;flex-direction:column;align-items:center;gap:28px}
+.ob-orb{width:64px;height:64px;animation:float 6s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+/* TOP STRIP — minimal */
+.topstrip{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:16px 28px;z-index:30;pointer-events:none}
+.topstrip > *{pointer-events:auto}
+.brand{font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:300;letter-spacing:1.5px;color:var(--ts);text-transform:lowercase;font-style:italic}
+.top-actions{display:flex;gap:6px}
+
+/* RESPONSIVE */
+@media(max-width:560px){
+  #stage{padding:80px 20px 100px}
+  .disp{font-size:32px}
+  .invit-text{font-size:26px}
+  .panchang-grid{grid-template-columns:1fr 1fr}
+  .body-row{flex-direction:column;align-items:flex-start;gap:8px}
+  .body-row-input{width:100%}
+}
+
+/* TOAST */
+.toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:var(--ch);border:1px solid var(--bd2);padding:10px 20px;border-radius:30px;font-size:12px;color:var(--ts);z-index:500;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(-8px)}
+</style>
+</head>
+<body>
+
+<div class="ambient">
+  <div class="amb-blob amb-1" id="amb1"></div>
+  <div class="amb-blob amb-2" id="amb2"></div>
+  <div class="amb-blob amb-3" id="amb3"></div>
+</div>
+
+<!-- ONBOARDING -->
+<div id="ob">
+  <div class="ob-content">
+    <div class="ob-orb">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+        <circle cx="32" cy="32" r="28" stroke="rgba(122,159,255,.25)" stroke-width="1"/>
+        <circle cx="32" cy="32" r="18" fill="rgba(122,159,255,.05)" stroke="rgba(122,159,255,.18)" stroke-width="1"/>
+        <circle cx="32" cy="32" r="6" fill="rgba(122,159,255,.4)"/>
+      </svg>
+    </div>
+    <div class="lbl">Cosmic Align</div>
+    <div class="serif" style="font-size:44px;line-height:1.15">An instrument<br>for the column.</div>
+    <div class="body" style="max-width:360px">From cosmos to body to food to mind to awareness — one current. This is not tracking. It is witnessing.</div>
+    <button class="btn btn-pr" style="padding:11px 32px" onclick="enterApp()">Begin</button>
+  </div>
+</div>
+
+<!-- TOP STRIP -->
+<div class="topstrip">
+  <div class="brand">cosmic align</div>
+  <div class="top-actions">
+    <button class="btn-ghost" onclick="enterCM()">stillness</button>
+    <button class="btn-ghost" onclick="openSettings()">·</button>
+  </div>
+</div>
+
+<!-- THE COLUMN -->
+<div id="stage">
+
+  <!-- 1. THE NOW -->
+  <div class="section s1">
+    <div class="lbl" id="now-date">—</div>
+    <div class="disp" style="margin-top:6px" id="now-greet">—</div>
+
+    <div class="hora-arc" id="hora-arc">
+      <div class="hora-line"></div>
+      <div class="hora-tick" style="left:0%">sunrise</div>
+      <div class="hora-tick" style="left:50%">noon</div>
+      <div class="hora-tick" style="left:100%">sunset</div>
+      <div class="hora-marker" id="hora-mark"></div>
+    </div>
+
+    <div class="invitation">
+      <div class="invit-quality" id="invit-quality">—</div>
+      <div class="invit-text" id="invit-text">—</div>
+      <div class="body" id="invit-body" style="max-width:560px">—</div>
+    </div>
+
+    <div class="panchang-grid">
+      <div class="pan-cell"><div class="pan-lbl">Tithi</div><div class="pan-val" id="p-tithi">—</div><div class="pan-meta" id="p-paksha">—</div></div>
+      <div class="pan-cell"><div class="pan-lbl">Nakshatra</div><div class="pan-val" id="p-naksh">—</div><div class="pan-meta" id="p-naksh-lord">—</div></div>
+      <div class="pan-cell"><div class="pan-lbl">Moon</div><div class="pan-val" id="p-moon">—</div><div class="pan-meta" id="p-moon-pct">—</div></div>
+      <div class="pan-cell"><div class="pan-lbl">Vaara</div><div class="pan-val" id="p-vaara">—</div><div class="pan-meta" id="p-vaara-d">—</div></div>
+      <div class="pan-cell"><div class="pan-lbl">Yoga</div><div class="pan-val" id="p-yoga">—</div></div>
+      <div class="pan-cell"><div class="pan-lbl">Karana</div><div class="pan-val" id="p-karana">—</div></div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 2. WITNESSING -->
+  <div class="section s2">
+    <div class="lbl">Witnessing</div>
+    <div class="h2" style="margin-top:8px">What just happened?</div>
+    <div class="body" style="margin-top:8px">Type a food, a movement, a thought, a sleep duration. The instrument receives it.</div>
+
+    <div class="witness-input-wrap">
+      <input type="text" class="witness-input" id="witness" placeholder="eggs · walking · a wandering thought · 7 hours sleep" autocomplete="off" oninput="onWitness(this.value)" onfocus="onWitness(this.value)">
+      <div id="suggest-list"></div>
+    </div>
+    <div class="witness-hint" id="witness-hint">try typing: paneer · surya namaskar · wrap · journal · 6h sleep</div>
+
+    <div id="preview-area"></div>
+
+    <div class="lbl" style="margin-top:36px;display:block">Today's column</div>
+    <div class="log-list" id="log-list"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 3. COHERENCE -->
+  <div class="section s3">
+    <div class="lbl">The day's read</div>
+    <div class="h2" style="margin-top:8px">Coherence with this moment</div>
+
+    <div class="coh-block">
+      <div class="coh-row">
+        <div class="coh-bar"><div class="coh-fill" id="coh-fill" style="width:0%"></div></div>
+        <div class="coh-num" id="coh-num">—</div>
+      </div>
+      <div class="coh-poem" id="coh-poem">Begin witnessing to read the day's coherence.</div>
+
+      <div id="flow-block" style="margin-top:24px;display:none">
+        <div class="lbl" style="margin-bottom:10px">Nourishing</div>
+        <div class="flow-tags" id="flow-supports"></div>
+        <div class="lbl" style="margin-top:18px;margin-bottom:10px">Weighing on</div>
+        <div class="flow-tags" id="flow-weighs"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 4. THE BODY'S RESPONSE -->
+  <div class="section s4">
+    <div class="lbl">The body's response</div>
+    <div class="h2" style="margin-top:8px">How is this day arriving?</div>
+
+    <div style="margin-top:28px">
+      <div class="body-row">
+        <div class="body-row-lbl">Clarity</div>
+        <div class="body-row-input">
+          <input type="range" min="0" max="10" value="5" id="r-clarity" oninput="upR(this,'v-clarity')">
+          <div class="body-row-val" id="v-clarity">5</div>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="body-row-lbl">Body energy</div>
+        <div class="body-row-input">
+          <input type="range" min="0" max="10" value="5" id="r-energy" oninput="upR(this,'v-energy')">
+          <div class="body-row-val" id="v-energy">5</div>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="body-row-lbl">Hydration</div>
+        <div class="body-row-input">
+          <input type="range" min="0" max="15" value="6" id="r-hydration" oninput="upR(this,'v-hydration')">
+          <div class="body-row-val" id="v-hydration">6</div>
+          <div class="body-xs" style="min-width:42px">glasses</div>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="body-row-lbl">Sleep last night</div>
+        <div class="body-row-input">
+          <input type="range" min="0" max="12" step="0.5" value="7" id="r-sleep" oninput="upR(this,'v-sleep')">
+          <div class="body-row-val" id="v-sleep">7</div>
+          <div class="body-xs" style="min-width:42px">hours</div>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="body-row-lbl">Stimulation</div>
+        <div class="body-row-input">
+          <input type="range" min="0" max="10" value="5" id="r-stim" oninput="upR(this,'v-stim')">
+          <div class="body-row-val" id="v-stim">5</div>
+          <div class="body-xs" style="min-width:48px">screen/social</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px">
+      <div class="lbl" style="margin-bottom:12px">Mood</div>
+      <div class="mood-row" id="mood-row"></div>
+    </div>
+
+    <div style="margin-top:28px">
+      <div class="lbl" style="margin-bottom:8px">A reflection</div>
+      <div class="body-sm italic" style="margin-bottom:8px;color:var(--ts)" id="refl-prompt">—</div>
+      <textarea id="refl" rows="3" placeholder="what arises..."></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:24px;justify-content:flex-end">
+      <button class="btn-ghost" onclick="newRefl()">different prompt</button>
+      <button class="btn btn-pr" onclick="saveDay()">witness this day</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 5. RHYTHM READ -->
+  <div class="section s5">
+    <div class="lbl">The rhythm read</div>
+    <div class="h2" style="margin-top:8px">What is emerging across days</div>
+
+    <div class="rhythm-card" style="margin-top:20px">
+      <div class="lbl" style="margin-bottom:6px">7-day coherence</div>
+      <div class="rhythm-week" id="week-strip"></div>
+      <div class="body" style="margin-top:24px" id="week-note">—</div>
+    </div>
+
+    <div id="rhythm-obs"></div>
+
+    <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+      <button class="btn" onclick="generateAI()" id="ai-btn">AI rhythm reading</button>
+      <button class="btn-ghost" onclick="exportData()">export data</button>
+      <button class="btn-ghost" onclick="clearAll()">clear</button>
+    </div>
+    <div id="ai-output" style="margin-top:18px"></div>
+  </div>
+
+  <!-- GATE -->
+  <div class="gate">
+    <button class="gate-btn" onclick="enterCM()">enter stillness</button>
+  </div>
+
+</div>
+
+<!-- CONSCIOUSNESS MODE -->
+<div id="cm">
+  <div class="cm-data" id="cm-data">—</div>
+  <div class="br-ring"><div class="br-inner"><div class="br-dot"></div></div></div>
+  <div class="cm-prompt" id="cm-prompt">—</div>
+  <button class="cm-exit" onclick="exitCM()">exit</button>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings">
+  <div class="set-box">
+    <div class="lbl" style="margin-bottom:14px">Settings</div>
+    <div class="h3" style="margin-bottom:14px">Location</div>
+    <div class="body-sm" style="margin-bottom:8px">Used for sunrise/sunset and panchang accuracy.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <input type="number" id="s-lat" placeholder="Latitude" step="0.01">
+      <input type="number" id="s-lng" placeholder="Longitude" step="0.01">
+    </div>
+    <div class="body-xs" style="margin-top:6px">Default: Ahmedabad (23.02, 72.57)</div>
+    <div style="height:1px;background:var(--bd);margin:24px 0"></div>
+    <div class="h3" style="margin-bottom:10px">AI rhythm reader</div>
+    <div class="body-sm" style="margin-bottom:8px">Optional. Anthropic API key, stored only on this device.</div>
+    <input type="password" id="s-api" placeholder="sk-ant-...">
+    <div style="height:1px;background:var(--bd);margin:24px 0"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-ghost" onclick="closeSettings()">cancel</button>
+      <button class="btn btn-pr" onclick="saveSettings()">save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════════════════════
+const dk=d=>`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+const load=k=>{try{return JSON.parse(localStorage.getItem(k)||'[]')}catch{return[]}};
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const getApi=()=>localStorage.getItem('ca_api')||'';
+const getLat=()=>parseFloat(localStorage.getItem('ca_lat')||'23.02');
+const getLng=()=>parseFloat(localStorage.getItem('ca_lng')||'72.57');
+
+// ═══════════════════════════════════════════════════════════════════════
+// PANCHANG ENGINE
+// ═══════════════════════════════════════════════════════════════════════
+const NK=[
+  {n:'Ashwini',l:'Ketu',d:'Swiftness, healing, beginnings.'},
+  {n:'Bharani',l:'Venus',d:'Restraint as transformation.'},
+  {n:'Krittika',l:'Sun',d:'Sharp clarity. Purification.'},
+  {n:'Rohini',l:'Moon',d:'Sensory richness. Creativity.'},
+  {n:'Mrigashira',l:'Mars',d:'Curious seeking. Heightened perception.'},
+  {n:'Ardra',l:'Rahu',d:'Dissolution before renewal.'},
+  {n:'Punarvasu',l:'Jupiter',d:'Return to goodness. Restoration.'},
+  {n:'Pushya',l:'Saturn',d:'Nourishment. Care amplified.'},
+  {n:'Ashlesha',l:'Mercury',d:'Penetrating insight. Hidden wisdom.'},
+  {n:'Magha',l:'Ketu',d:'Ancestral strength. Honor what is built.'},
+  {n:'Purva Phalguni',l:'Venus',d:'Pleasure. Restoration permitted.'},
+  {n:'Uttara Phalguni',l:'Sun',d:'Steady patronage. Reliable effort.'},
+  {n:'Hasta',l:'Moon',d:'Skill. Practical intelligence.'},
+  {n:'Chitra',l:'Mars',d:'Beauty. Aesthetic depth.'},
+  {n:'Swati',l:'Rahu',d:'Independence. Allow movement.'},
+  {n:'Vishakha',l:'Jupiter',d:'Purpose. True motivation.'},
+  {n:'Anuradha',l:'Saturn',d:'Devotion. Depth in relationship.'},
+  {n:'Jyeshtha',l:'Mercury',d:'Seniority. What you protect reveals values.'},
+  {n:'Mula',l:'Ketu',d:'Root inquiry. The question beneath.'},
+  {n:'Purva Ashadha',l:'Venus',d:'Invincibility through clarity.'},
+  {n:'Uttara Ashadha',l:'Sun',d:'Patient virtue. Dharmic accumulation.'},
+  {n:'Shravana',l:'Moon',d:'Listening. Unexpected teachers.'},
+  {n:'Dhanishtha',l:'Mars',d:'Abundance through rhythm.'},
+  {n:'Shatabhisha',l:'Rahu',d:'Healing through solitude.'},
+  {n:'Purva Bhadrapada',l:'Jupiter',d:'Fire. Story-changing.'},
+  {n:'Uttara Bhadrapada',l:'Saturn',d:'Deep calm beneath intensity.'},
+  {n:'Revati',l:'Mercury',d:'Completion. Compassion. Wholeness near.'}
+];
+const TI=[
+  {n:'Pratipada',d:'Fresh attention. New beginnings.',w:1},
+  {n:'Dwitiya',d:'Consolidation of what was begun.',w:1},
+  {n:'Tritiya',d:'Creative momentum. Communication.',w:2},
+  {n:'Chaturthi',d:'Obstacle-clearing. Inner work.',w:1},
+  {n:'Panchami',d:'Vitality. Expansion.',w:2},
+  {n:'Shashthi',d:'Healing. Fine-tuning.',w:1},
+  {n:'Saptami',d:'Movement. Rhythm.',w:2},
+  {n:'Ashtami',d:'Transformation. Intensity.',w:2},
+  {n:'Navami',d:'Strength. Courage.',w:2},
+  {n:'Dashami',d:'Completion of phase. Dharmic action.',w:2},
+  {n:'Ekadashi',d:'Elevation. Traditionally a fasting day.',w:0},
+  {n:'Dwadashi',d:'Gratitude. Integration.',w:1},
+  {n:'Trayodashi',d:'Beauty. Abundance.',w:2},
+  {n:'Chaturdashi',d:'Intensity. Thinning veils.',w:1},
+  {n:'Purnima',d:'Peak illumination. Heightened sensitivity.',w:2},
+  {n:'Pratipada',d:'Krishna Paksha begins. The inward journey.',w:1},
+  {n:'Dwitiya',d:'Releasing. Simplifying.',w:1},
+  {n:'Tritiya',d:'Communication meets depth.',w:1},
+  {n:'Chaturthi',d:'Inner obstacles surface — observe.',w:1},
+  {n:'Panchami',d:'Restore rather than deplete.',w:1},
+  {n:'Shashthi',d:'Healing through stillness.',w:1},
+  {n:'Saptami',d:'Subtle rhythms more audible.',w:1},
+  {n:'Ashtami',d:'Deep transformation available.',w:2},
+  {n:'Navami',d:'Completion of old patterns.',w:1},
+  {n:'Dashami',d:'The dharmic path clarifies.',w:1},
+  {n:'Ekadashi',d:'Prime time for fasting and clarity.',w:0},
+  {n:'Dwadashi',d:'Gratitude for the cycle.',w:1},
+  {n:'Trayodashi',d:'Approaching the new beginning.',w:1},
+  {n:'Chaturdashi',d:'Profound stillness and release.',w:1},
+  {n:'Amavasya',d:'New Moon. Emptiness as completeness.',w:0}
+];
+const YOGAS=['Vishkambha','Preeti','Ayushman','Saubhagya','Shobhana','Atiganda','Sukarma','Dhriti','Shula','Ganda','Vriddhi','Dhruva','Vyaghata','Harshana','Vajra','Siddhi','Vyatipata','Variyan','Parigha','Shiva','Siddha','Sadhya','Shubha','Shukla','Brahma','Indra','Vaidhriti'];
+const KARANAS=['Bava','Balava','Kaulava','Taitila','Garija','Vanija','Vishti','Shakuni','Chatushpada','Naga','Kimstughna'];
+const VAARAS=[
+  {n:'Ravivara',d:'Sun. The relationship with one\'s own light.'},
+  {n:'Somavara',d:'Moon. Notice without acting immediately.'},
+  {n:'Mangalavara',d:'Mars. Where is effort aligned vs forced?'},
+  {n:'Budhavara',d:'Mercury. How do you process and share?'},
+  {n:'Guruvara',d:'Jupiter. What understanding wants to grow?'},
+  {n:'Shukravara',d:'Venus. What brings genuine delight?'},
+  {n:'Shanivara',d:'Saturn. The long view illuminates today.'}
+];
+
+function moonPhase(d){
+  const kn=new Date(2000,0,6,18,14,0),cyc=29.530588853;
+  const diff=(d-kn)/86400000;
+  const ph=((diff%cyc)+cyc)%cyc, pct=ph/cyc;
+  const names=['New Moon','Waxing Crescent','First Quarter','Waxing Gibbous','Full Moon','Waning Gibbous','Last Quarter','Waning Crescent'];
+  const idx=ph<1.85?0:ph<7.38?1:ph<9.22?2:ph<14.77?3:ph<16.61?4:ph<22.15?5:ph<23.99?6:7;
+  return{ph,pct,name:names[idx],illum:Math.round(Math.abs(Math.cos(pct*2*Math.PI))*100)};
+}
+function getNK(d){const{pct}=moonPhase(d);const i=Math.floor(pct*27)%27;return{...NK[i],idx:i}}
+function getTithi(d){const{pct}=moonPhase(d);const i=Math.floor(pct*30)%30;return{...TI[i],num:i+1,paksha:i<15?'Shukla':'Krishna'}}
+function getYoga(d){return YOGAS[(d.getDate()+d.getMonth()*31+d.getFullYear()*365)%27]}
+function getKar(d){return KARANAS[(d.getDate()+d.getMonth()*31)%11]}
+function getVaara(d){return VAARAS[d.getDay()]}
+
+function sunTimes(d){
+  const lat=getLat(),lng=getLng();
+  const jd=d.getTime()/86400000+2440587.5,n=jd-2451545;
+  const L=(280.46+.9856474*n)%360, g=(357.528+.9856003*n)%360*Math.PI/180;
+  const lam=(L+1.915*Math.sin(g)+.02*Math.sin(2*g))*Math.PI/180;
+  const dec=Math.asin(Math.sin(23.439*Math.PI/180)*Math.sin(lam));
+  const cosH=-Math.tan(lat*Math.PI/180)*Math.tan(dec);
+  const H=cosH<-1?180:cosH>1?0:Math.acos(cosH)*180/Math.PI;
+  const eqT=4*((L-.0057183-Math.atan2(Math.cos(23.439*Math.PI/180)*Math.sin(lam),Math.cos(lam))*180/Math.PI+360)%360);
+  const tr=(720-4*lng-eqT+d.getTimezoneOffset())/60;
+  return{srHr:tr-H/15, ssHr:tr+H/15};
+}
+
+function timeQuality(d){
+  const h=d.getHours()+d.getMinutes()/60;
+  const{srHr,ssHr}=sunTimes(d);
+  if(h>=srHr-1.5 && h<srHr-.2) return 'brahma_muhurta';
+  if(h>=srHr-.2 && h<srHr+4) return 'morning';
+  if(h>=srHr+4 && h<12) return 'late_morning';
+  if(h>=12 && h<14.5) return 'midday';
+  if(h>=14.5 && h<ssHr-1) return 'afternoon';
+  if(h>=ssHr-1 && h<ssHr+.5) return 'sandhya';
+  if(h>=ssHr+.5 && h<22) return 'night';
+  return 'deep_night';
+}
+
+function getMoment(d){
+  d=d||new Date();
+  const tithi=getTithi(d), naksh=getNK(d), moon=moonPhase(d), vaara=getVaara(d);
+  return{
+    date:d, tithi, naksh, moon, vaara,
+    yoga:getYoga(d), karana:getKar(d),
+    paksha:tithi.paksha,
+    sun:sunTimes(d),
+    tq:timeQuality(d)
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// THE INVITATION — what this moment supports
+// ═══════════════════════════════════════════════════════════════════════
+function deriveInvitation(M){
+  const tq=M.tq, ti=M.tithi.n, isWan=M.paksha==='Krishna';
+  let q,t,b,sug=[];
+  if(tq==='brahma_muhurta'){q='sadhana';t='The veil is thin.';b='No food yet. The body wants stillness, breath, and a small light. This window is for inner work — not consumption.';sug=['stillness','pranayama','journal']}
+  else if(tq==='morning'){q='kindling';t='The body awakens. Light feeds light.';b='A short walk in early sun aligns the circadian rhythm. Light, sattvic food. Sustained movement is welcome here.';sug=['light food','walk','sun','yoga']}
+  else if(tq==='late_morning'){q='building';t='Energy is rising. Direct it.';b='Focused work, the harder lift, the longer think — the body has the most fire and clarity in this window.';sug=['focused work','strength','main meal soon']}
+  else if(tq==='midday'){q='agni';t='Digestive fire is highest.';b='The largest meal of the day belongs here. The body can transform what it receives now in a way it cannot at night.';sug=['main meal','heavier food ok','sit while eating']}
+  else if(tq==='afternoon'){q='softening';t='The fire softens.';b='Light intake, gentle movement, easy attention. Heavy food now sits longer than it should.';sug=['walk','light snack','breath']}
+  else if(tq==='sandhya'){q='turning';t='The hinge of day. Slow.';b='Sandhya — the cosmic pause between forces. Witness the turn. Avoid heavy decisions, heavy food, heavy stimulation.';sug=['stillness','light tea','no screens']}
+  else if(tq==='night'){q='settling';t='The body wants to digest, then rest.';b='Anything heavy entering now will still be in the system at sleep — delaying repair, fragmenting dreams. Light. Slow. Inward.';sug=['light dinner','no caffeine','reading']}
+  else{q='rest';t='Rest is the great work.';b='What delays sleep delays the body\'s repair, the mind\'s integration, the consciousness\'s clearing. This is sacred time.';sug=['sleep','no food','no screens']}
+
+  // Modifiers from panchang
+  if(ti.startsWith('Ekadashi')){t='Ekadashi. The body invites lightness.';b='Traditionally a fasting day — even light food adds inertia today. If eating, fruit and water are the path.';q='fasting'}
+  else if(ti==='Amavasya'){t='Amavasya. Emptiness as completeness.';b='The new moon. Inwardness amplified. Heavy food, heavy stimulation, heavy decisions all sit harder today.';q='inward'}
+  else if(ti==='Purnima'){t='Purnima. Peak illumination.';b='The full moon heightens sensitivity to everything — food, mood, stimulation, sleep. Move slower than usual.';q='heightened'}
+  else if(isWan && ['night','deep_night','sandhya'].includes(tq)){
+    b=b+' Krishna Paksha — the moon\'s waning amplifies the call inward.';
+  }
+
+  return{quality:q, text:t, body:b, suggests:sug};
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// FOOD INTELLIGENCE — with alignment markers
+// guna: sattvic | rajasic | tamasic
+// temp: warming | cooling | neutral
+// weight: light | medium | heavy
+// time: morning | midday | evening | any
+// ═══════════════════════════════════════════════════════════════════════
+const FOODS=[
+  // sattvic Indian staples — traditional
+  {n:'Eggs',q:2,u:'large',p:12,c:1,f:10,cal:140,guna:'rajasic',temp:'warming',weight:'medium',time:'morning',micros:['choline','B12','selenium','vit_D'],supports:['brain','muscle','satiety','sustained_energy'],weighs:[]},
+  {n:'Curd / Yogurt',q:150,u:'g',p:6,c:8,f:4,cal:100,guna:'sattvic',temp:'cooling',weight:'light',time:'midday',micros:['calcium','probiotics','B12'],supports:['gut','bones','cooling'],weighs:['evening_use']},
+  {n:'Paneer',q:50,u:'g',p:9,c:1,f:11,cal:142,guna:'sattvic',temp:'cooling',weight:'heavy',time:'midday',micros:['calcium','B12'],supports:['muscle','bones','satiety'],weighs:['meditation_depth']},
+  {n:'Milk (warm)',q:250,u:'ml',p:8,c:12,f:8,cal:150,guna:'sattvic',temp:'warming',weight:'medium',time:'evening',micros:['calcium','B12','vit_D','tryptophan'],supports:['sleep','calming','bones'],weighs:[]},
+  {n:'Ghee',q:1,u:'tsp',p:0,c:0,f:5,cal:45,guna:'sattvic',temp:'warming',weight:'light',time:'any',micros:['vit_A','vit_K2','butyrate'],supports:['gut','absorption','warmth','clarity'],weighs:[]},
+  {n:'Khichdi',q:1,u:'bowl',p:12,c:55,f:3,cal:290,guna:'sattvic',temp:'warming',weight:'medium',time:'any',micros:['complete_protein','fiber','magnesium'],supports:['gut','grounding','easy_digest','sleep'],weighs:[]},
+  {n:'Dal & Rice',q:1,u:'plate',p:13,c:65,f:2,cal:360,guna:'sattvic',temp:'warming',weight:'medium',time:'midday',micros:['complete_protein','fiber','folate','iron'],supports:['muscle','grounding','sustained_energy'],weighs:[]},
+  {n:'Roti + Sabzi',q:1,u:'plate',p:6,c:30,f:6,cal:220,guna:'sattvic',temp:'warming',weight:'medium',time:'midday',micros:['fiber','iron','vit_A'],supports:['grounding','gut'],weighs:[]},
+  {n:'Sabzi (mixed veg)',q:1,u:'bowl',p:3,c:12,f:5,cal:115,guna:'sattvic',temp:'warming',weight:'light',time:'any',micros:['fiber','vit_A','vit_C'],supports:['gut','immune','grounding'],weighs:[]},
+  {n:'Dal (toor/moong)',q:1,u:'bowl',p:9,c:25,f:1,cal:160,guna:'sattvic',temp:'warming',weight:'medium',time:'midday',micros:['fiber','folate','iron'],supports:['muscle','gut','grounding'],weighs:[]},
+  {n:'Moong sprouts',q:1,u:'cup',p:6,c:14,f:0,cal:80,guna:'sattvic',temp:'cooling',weight:'light',time:'morning',micros:['folate','vit_C','enzymes'],supports:['gut','clarity','easy_digest'],weighs:[]},
+  {n:'Poha',q:1,u:'plate',p:4,c:35,f:3,cal:200,guna:'sattvic',temp:'warming',weight:'light',time:'morning',micros:['iron','fiber'],supports:['light_energy','easy_digest'],weighs:[]},
+  {n:'Idli',q:2,u:'pieces',p:4,c:30,f:1,cal:150,guna:'sattvic',temp:'neutral',weight:'light',time:'morning',micros:['probiotics','fermented'],supports:['gut','easy_digest'],weighs:[]},
+  {n:'Dosa (plain)',q:1,u:'piece',p:4,c:30,f:5,cal:170,guna:'sattvic',temp:'warming',weight:'medium',time:'morning',micros:['fermented','iron'],supports:['gut','sustained_energy'],weighs:[]},
+  {n:'Oats',q:40,u:'g',p:5,c:27,f:3,cal:155,guna:'sattvic',temp:'warming',weight:'medium',time:'morning',micros:['fiber','manganese','beta_glucan'],supports:['gut','sustained_energy','focus'],weighs:[]},
+  {n:'Brown rice',q:1,u:'cup',p:5,c:46,f:2,cal:215,guna:'sattvic',temp:'warming',weight:'medium',time:'midday',micros:['manganese','magnesium','fiber'],supports:['sustained_energy','gut','grounding'],weighs:[]},
+  {n:'White rice',q:1,u:'cup',p:4,c:45,f:0,cal:200,guna:'sattvic',temp:'cooling',weight:'medium',time:'midday',micros:['manganese'],supports:['warmth','grounding'],weighs:['mental_sharpness_evening']},
+  {n:'Roti / Chapati',q:1,u:'piece',p:3,c:18,f:1,cal:104,guna:'sattvic',temp:'warming',weight:'light',time:'any',micros:['fiber','iron'],supports:['grounding','sustained_energy'],weighs:[]},
+  {n:'Quinoa',q:1,u:'cup',p:8,c:39,f:4,cal:222,guna:'sattvic',temp:'warming',weight:'medium',time:'midday',micros:['magnesium','iron','complete_protein'],supports:['muscle','sustained_energy'],weighs:[]},
+  {n:'Chickpeas (chana)',q:1,u:'cup',p:15,c:45,f:4,cal:270,guna:'rajasic',temp:'warming',weight:'medium',time:'midday',micros:['fiber','folate','iron'],supports:['muscle','gut','sustained_energy'],weighs:['gut_ease_evening']},
+  {n:'Rajma',q:1,u:'cup',p:15,c:40,f:1,cal:225,guna:'rajasic',temp:'warming',weight:'heavy',time:'midday',micros:['fiber','folate','iron'],supports:['muscle','grounding'],weighs:['gut_ease_evening']},
+  {n:'Lentils (masoor)',q:1,u:'cup',p:18,c:40,f:1,cal:230,guna:'sattvic',temp:'warming',weight:'medium',time:'midday',micros:['fiber','folate','iron'],supports:['muscle','gut','sustained_energy'],weighs:[]},
+  {n:'Tofu',q:100,u:'g',p:10,c:2,f:5,cal:90,guna:'sattvic',temp:'cooling',weight:'light',time:'any',micros:['calcium','iron'],supports:['muscle','low_load'],weighs:[]},
+  // Proteins (rajasic-tamasic territory)
+  {n:'Chicken breast',q:100,u:'g',p:31,c:0,f:3,cal:165,guna:'rajasic',temp:'warming',weight:'heavy',time:'midday',micros:['B6','niacin','selenium'],supports:['muscle','satiety','sustained_energy'],weighs:['meditation_depth']},
+  {n:'Salmon',q:100,u:'g',p:22,c:0,f:13,cal:208,guna:'rajasic',temp:'warming',weight:'heavy',time:'midday',micros:['omega_3','B12','vit_D'],supports:['brain','heart','mood'],weighs:[]},
+  {n:'Tuna',q:100,u:'g',p:25,c:0,f:1,cal:115,guna:'rajasic',temp:'cooling',weight:'medium',time:'midday',micros:['B12','selenium'],supports:['muscle','brain','low_load'],weighs:[]},
+  // Vegetables
+  {n:'Spinach',q:1,u:'cup',p:1,c:1,f:0,cal:7,guna:'sattvic',temp:'cooling',weight:'light',time:'any',micros:['iron','folate','vit_K'],supports:['blood','low_load','clarity'],weighs:[]},
+  {n:'Broccoli',q:1,u:'cup',p:3,c:6,f:0,cal:30,guna:'sattvic',temp:'cooling',weight:'light',time:'any',micros:['vit_C','vit_K','sulforaphane'],supports:['detox','immune','low_load'],weighs:[]},
+  {n:'Sweet potato',q:1,u:'medium',p:2,c:24,f:0,cal:105,guna:'sattvic',temp:'warming',weight:'medium',time:'midday',micros:['vit_A','potassium','fiber'],supports:['sustained_energy','grounding'],weighs:[]},
+  {n:'Salad (greens)',q:1,u:'plate',p:2,c:8,f:1,cal:55,guna:'sattvic',temp:'cooling',weight:'light',time:'midday',micros:['fiber','folate','vit_C'],supports:['gut','clarity','low_load'],weighs:['evening_use']},
+  {n:'Avocado',q:0.5,u:'piece',p:2,c:9,f:15,cal:160,guna:'sattvic',temp:'cooling',weight:'medium',time:'morning',micros:['potassium','folate','vit_E'],supports:['brain','heart','satiety'],weighs:[]},
+  // Fruits
+  {n:'Banana',q:1,u:'medium',p:1,c:27,f:0,cal:110,guna:'sattvic',temp:'cooling',weight:'medium',time:'morning',micros:['potassium','B6','magnesium'],supports:['quick_energy','mood','muscle_recovery'],weighs:[]},
+  {n:'Apple',q:1,u:'medium',p:0,c:25,f:0,cal:95,guna:'sattvic',temp:'cooling',weight:'light',time:'morning',micros:['fiber','vit_C','quercetin'],supports:['gut','steady_energy'],weighs:[]},
+  {n:'Mango',q:1,u:'cup',p:1,c:25,f:1,cal:100,guna:'sattvic',temp:'warming',weight:'medium',time:'morning',micros:['vit_C','vit_A'],supports:['immune','warmth','quick_energy'],weighs:['energy_stability']},
+  {n:'Berries',q:1,u:'cup',p:1,c:18,f:0,cal:80,guna:'sattvic',temp:'cooling',weight:'light',time:'morning',micros:['anthocyanins','vit_C','fiber'],supports:['brain','antioxidant','clarity'],weighs:[]},
+  {n:'Dates',q:2,u:'pieces',p:0,c:18,f:0,cal:67,guna:'sattvic',temp:'warming',weight:'light',time:'morning',micros:['potassium','iron'],supports:['quick_energy','warmth'],weighs:['energy_stability']},
+  // Nuts / seeds
+  {n:'Almonds (soaked)',q:10,u:'pieces',p:3,c:3,f:7,cal:85,guna:'sattvic',temp:'warming',weight:'light',time:'morning',micros:['vit_E','magnesium','manganese'],supports:['brain','satiety','clarity'],weighs:[]},
+  {n:'Walnuts',q:5,u:'pieces',p:3,c:2,f:9,cal:95,guna:'sattvic',temp:'warming',weight:'light',time:'any',micros:['omega_3','manganese'],supports:['brain','heart','mood'],weighs:[]},
+  {n:'Cashews',q:10,u:'pieces',p:3,c:5,f:7,cal:90,guna:'sattvic',temp:'warming',weight:'light',time:'any',micros:['magnesium','copper','zinc'],supports:['mood','muscle','satiety'],weighs:[]},
+  {n:'Chia seeds',q:1,u:'tbsp',p:2,c:5,f:4,cal:60,guna:'sattvic',temp:'cooling',weight:'light',time:'morning',micros:['omega_3','fiber','calcium'],supports:['gut','hydration','sustained_energy'],weighs:[]},
+  {n:'Pumpkin seeds',q:1,u:'tbsp',p:3,c:2,f:5,cal:60,guna:'sattvic',temp:'warming',weight:'light',time:'evening',micros:['magnesium','zinc','tryptophan'],supports:['sleep','muscle'],weighs:[]},
+  // Beverages
+  {n:'Coffee (black)',q:1,u:'cup',p:0,c:0,f:0,cal:3,guna:'rajasic',temp:'warming',weight:'light',time:'morning',micros:['caffeine_95mg','antioxidants'],supports:['alertness','focus'],weighs:['sleep_quality','nervous_system','meditation_depth'],caf:95},
+  {n:'Espresso',q:1,u:'shot',p:0,c:0,f:0,cal:5,guna:'rajasic',temp:'warming',weight:'light',time:'morning',micros:['caffeine_63mg'],supports:['alertness','focus'],weighs:['sleep_quality'],caf:63},
+  {n:'Green tea',q:1,u:'cup',p:0,c:0,f:0,cal:2,guna:'sattvic',temp:'cooling',weight:'light',time:'morning',micros:['EGCG','L_theanine','antioxidants'],supports:['focus','calm','meditation'],weighs:[],caf:30},
+  {n:'Chai (with milk)',q:1,u:'cup',p:3,c:8,f:3,cal:75,guna:'rajasic',temp:'warming',weight:'light',time:'morning',micros:['calcium'],supports:['warmth','alertness','comfort'],weighs:['sleep_quality'],caf:50},
+  {n:'Herbal tea',q:1,u:'cup',p:0,c:0,f:0,cal:2,guna:'sattvic',temp:'warming',weight:'light',time:'evening',micros:['polyphenols'],supports:['calm','digestion','sleep'],weighs:[]},
+  {n:'Buttermilk',q:1,u:'glass',p:3,c:6,f:2,cal:55,guna:'sattvic',temp:'cooling',weight:'light',time:'midday',micros:['probiotics','calcium'],supports:['gut','cooling','easy_digest'],weighs:[]},
+  {n:'Warm water with lemon',q:1,u:'glass',p:0,c:1,f:0,cal:5,guna:'sattvic',temp:'warming',weight:'light',time:'morning',micros:['vit_C'],supports:['hydration','digestion'],weighs:[]},
+  // Sweets / mild rajas
+  {n:'Dark chocolate (70%)',q:20,u:'g',p:2,c:9,f:8,cal:120,guna:'rajasic',temp:'warming',weight:'light',time:'midday',micros:['flavonoids','magnesium','iron'],supports:['mood','focus','antioxidant'],weighs:[],caf:15},
+  {n:'Honey',q:1,u:'tsp',p:0,c:6,f:0,cal:21,guna:'sattvic',temp:'warming',weight:'light',time:'morning',micros:['enzymes'],supports:['quick_energy','soothing'],weighs:[]},
+  {n:'Mithai (sweet)',q:1,u:'piece',p:2,c:25,f:8,cal:175,guna:'rajasic',temp:'warming',weight:'medium',time:'midday',micros:['simple_sugars'],supports:['warmth','quick_energy'],weighs:['energy_stability','meditation_depth']},
+  // PROCESSED / FOREIGN — gentle observational
+  {n:'Wrap',q:1,u:'piece',p:14,c:38,f:14,cal:340,guna:'tamasic',temp:'neutral',weight:'heavy',time:'midday',micros:['refined_carbs','refined_oils'],supports:['quick_satiety'],weighs:['gut_ease','energy_stability','meditation_depth','clarity']},
+  {n:'Pizza slice',q:1,u:'slice',p:11,c:33,f:11,cal:285,guna:'tamasic',temp:'warming',weight:'heavy',time:'midday',micros:['refined_carbs','refined_oils','sodium'],supports:['quick_satiety'],weighs:['gut_ease','energy_stability','meditation_depth']},
+  {n:'Burger',q:1,u:'piece',p:24,c:35,f:25,cal:480,guna:'tamasic',temp:'warming',weight:'heavy',time:'midday',micros:['refined_carbs','refined_oils'],supports:['satiety','muscle'],weighs:['gut_ease','energy_stability','meditation_depth','clarity']},
+  {n:'Pasta (white)',q:1,u:'plate',p:8,c:55,f:8,cal:340,guna:'tamasic',temp:'neutral',weight:'heavy',time:'midday',micros:['refined_carbs'],supports:['warmth','satiety'],weighs:['energy_stability','clarity_evening']},
+  {n:'Sandwich (white bread)',q:1,u:'piece',p:8,c:30,f:8,cal:240,guna:'tamasic',temp:'neutral',weight:'medium',time:'midday',micros:['refined_carbs'],supports:['quick_satiety'],weighs:['energy_stability','gut_ease']},
+  {n:'French fries',q:1,u:'serving',p:3,c:40,f:15,cal:310,guna:'tamasic',temp:'warming',weight:'heavy',time:'midday',micros:['refined_oils','sodium'],supports:[],weighs:['gut_ease','energy_stability','meditation_depth','clarity','inflammation']},
+  {n:'Instant noodles',q:1,u:'pack',p:7,c:55,f:14,cal:380,guna:'tamasic',temp:'warming',weight:'heavy',time:'any',micros:['refined_carbs','refined_oils','sodium'],supports:['quick_satiety'],weighs:['gut_ease','energy_stability','clarity','meditation_depth']},
+  {n:'Sugary cereal',q:1,u:'bowl',p:3,c:35,f:1,cal:165,guna:'tamasic',temp:'cooling',weight:'medium',time:'morning',micros:['simple_sugars','refined_carbs'],supports:['quick_energy'],weighs:['energy_stability','clarity']},
+  {n:'Donut / pastry',q:1,u:'piece',p:3,c:30,f:14,cal:260,guna:'tamasic',temp:'warming',weight:'medium',time:'morning',micros:['simple_sugars','refined_oils'],supports:[],weighs:['energy_stability','clarity','meditation_depth']},
+  {n:'Energy drink',q:1,u:'can',p:0,c:30,f:0,cal:120,guna:'rajasic',temp:'warming',weight:'light',time:'morning',micros:['caffeine_120mg','simple_sugars'],supports:['alertness'],weighs:['nervous_system','sleep_quality','energy_stability'],caf:120},
+  {n:'Soda / soft drink',q:1,u:'can',p:0,c:39,f:0,cal:140,guna:'tamasic',temp:'cooling',weight:'light',time:'midday',micros:['simple_sugars'],supports:[],weighs:['energy_stability','meditation_depth','gut_ease','sleep_quality','clarity']},
+  {n:'Chips / fried snack',q:30,u:'g',p:2,c:15,f:10,cal:160,guna:'tamasic',temp:'warming',weight:'light',time:'midday',micros:['refined_oils','sodium'],supports:[],weighs:['gut_ease','clarity','energy_stability']},
+  {n:'Fast food meal',q:1,u:'meal',p:25,c:75,f:35,cal:720,guna:'tamasic',temp:'warming',weight:'heavy',time:'midday',micros:['refined_carbs','refined_oils','sodium'],supports:['satiety'],weighs:['gut_ease','energy_stability','meditation_depth','clarity','inflammation']},
+  {n:'Protein bar',q:1,u:'bar',p:15,c:25,f:7,cal:220,guna:'rajasic',temp:'neutral',weight:'medium',time:'midday',micros:['processed_protein'],supports:['muscle_quick'],weighs:['gut_ease']},
+  // Oils / fats
+  {n:'Olive oil',q:1,u:'tbsp',p:0,c:0,f:14,cal:120,guna:'sattvic',temp:'cooling',weight:'light',time:'any',micros:['vit_E','oleic_acid'],supports:['heart','brain','absorption'],weighs:[]},
+  {n:'Coconut',q:30,u:'g',p:1,c:5,f:10,cal:105,guna:'sattvic',temp:'cooling',weight:'light',time:'morning',micros:['MCT','manganese'],supports:['quick_energy','satiety','warmth'],weighs:[]}
+];
+
+// ═══════════════════════════════════════════════════════════════════════
+// MOVEMENT DATABASE
+// vibe: energizing | grounding | calming | integrating
+// intensity: gentle | moderate | vigorous
+// ═══════════════════════════════════════════════════════════════════════
+const MOVES=[
+  {n:'Surya Namaskar',vibe:'energizing',intensity:'moderate',time:'morning',supports:['circulation','spine','sun_alignment','full_body','breath_movement'],weighs:[]},
+  {n:'Hatha Yoga',vibe:'integrating',intensity:'moderate',time:'any',supports:['body_mind_integration','flexibility','breath','presence'],weighs:[]},
+  {n:'Yin / Restorative Yoga',vibe:'calming',intensity:'gentle',time:'evening',supports:['nervous_system','fascia','stillness','sleep_prep'],weighs:[]},
+  {n:'Pranayama',vibe:'integrating',intensity:'gentle',time:'morning',supports:['nervous_system','breath','awareness','clarity'],weighs:[]},
+  {n:'Walking',vibe:'grounding',intensity:'gentle',time:'any',supports:['circulation','digestion','grounding','clarity'],weighs:[]},
+  {n:'Walking (post-meal)',vibe:'grounding',intensity:'gentle',time:'midday',supports:['digestion','blood_sugar','grounding'],weighs:[]},
+  {n:'Running',vibe:'energizing',intensity:'vigorous',time:'morning',supports:['cardio','endurance','mood','metabolism'],weighs:['recovery_load']},
+  {n:'Strength / Gym',vibe:'energizing',intensity:'vigorous',time:'morning',supports:['muscle','bone','metabolism','strength'],weighs:['recovery_load','meditation_depth_post']},
+  {n:'HIIT',vibe:'energizing',intensity:'vigorous',time:'morning',supports:['cardio','metabolism','mitochondria'],weighs:['nervous_system','recovery_load']},
+  {n:'Mobility work',vibe:'integrating',intensity:'gentle',time:'any',supports:['joints','fascia','injury_prevention','body_awareness'],weighs:[]},
+  {n:'Stretching',vibe:'calming',intensity:'gentle',time:'any',supports:['flexibility','tension_release','presence'],weighs:[]},
+  {n:'Cycling',vibe:'energizing',intensity:'moderate',time:'any',supports:['cardio','endurance','outdoor'],weighs:[]},
+  {n:'Swimming',vibe:'integrating',intensity:'moderate',time:'midday',supports:['full_body','cooling','low_impact','breath'],weighs:[]},
+  {n:'Dance / movement',vibe:'energizing',intensity:'moderate',time:'afternoon',supports:['mood','expression','cardio'],weighs:[]},
+  {n:'Sitting / being',vibe:'calming',intensity:'gentle',time:'any',supports:['nervous_system','awareness','stillness'],weighs:[]},
+  {n:'Meditation',vibe:'integrating',intensity:'gentle',time:'morning',supports:['awareness','clarity','equanimity','presence'],weighs:[]},
+  {n:'Nature walk',vibe:'grounding',intensity:'gentle',time:'any',supports:['nervous_system','grounding','vit_D','presence'],weighs:[]},
+  {n:'Rest / recovery',vibe:'calming',intensity:'gentle',time:'any',supports:['repair','integration','nervous_system'],weighs:[]}
+];
+
+// ═══════════════════════════════════════════════════════════════════════
+// ALIGNMENT ENGINE — the soul of the instrument
+// ═══════════════════════════════════════════════════════════════════════
+function fmtTag(t){
+  const m={vit_A:'vitamin A',vit_C:'vitamin C',vit_D:'vitamin D',vit_E:'vitamin E',vit_K:'vitamin K',vit_K2:'vitamin K2',B12:'B12',B6:'B6',omega_3:'omega-3',L_theanine:'L-theanine',MCT:'MCT',EGCG:'EGCG',beta_glucan:'beta-glucan',complete_protein:'complete protein',oleic_acid:'oleic acid',refined_carbs:'refined carbs',refined_oils:'refined oils',simple_sugars:'simple sugars',processed_protein:'processed protein',sustained_energy:'sustained energy',quick_energy:'quick energy',easy_digest:'easy digestion',low_load:'low load',mental_sharpness_evening:'mental sharpness',meditation_depth:'meditation depth',meditation_depth_post:'meditation depth',sleep_quality:'sleep quality',nervous_system:'nervous system',gut_ease:'gut ease',gut_ease_evening:'gut ease',energy_stability:'energy stability',muscle_recovery:'muscle recovery',body_mind_integration:'body-mind integration',breath_movement:'breath-movement',clarity_evening:'clarity',full_body:'full-body',recovery_load:'recovery load',sun_alignment:'sun alignment',sleep_prep:'sleep prep',blood_sugar:'blood sugar',injury_prevention:'injury prevention',body_awareness:'body awareness',low_impact:'low impact',quick_satiety:'quick satiety',muscle_quick:'muscle support',evening_use:'evening use'};
+  if(m[t])return m[t];
+  if(/^caffeine_/.test(t))return 'caffeine';
+  return t.replace(/_/g,' ');
+}
+
+function alignFood(food, M){
+  const tq=M.tq, ti=M.tithi.n, isWan=M.paksha==='Krishna';
+  let score=0;
+  let notes=[];
+
+  // Guna alignment
+  if(food.guna==='tamasic'){
+    score-=2;
+    notes.push('carries inertia — may dull awareness for hours');
+  } else if(food.guna==='sattvic'){
+    score+=1;
+  }
+
+  // Time-weight alignment
+  if(food.weight==='heavy'){
+    if(tq==='midday'){score+=1; notes.push('heavy food in midday agni — well-timed')}
+    else if(tq==='night'||tq==='deep_night'){score-=2; notes.push('heavy food entering at night — the body wants rest, not transformation')}
+    else if(tq==='evening'||tq==='sandhya'){score-=1; notes.push('heavy food at the day\'s wind-down')}
+  }
+  if(food.weight==='light'&&(tq==='morning'||tq==='evening')){score+=1}
+
+  // Rajasic at evening
+  if(food.guna==='rajasic'&&(tq==='night'||tq==='deep_night')){
+    score-=1;
+    if(food.caf)notes.push('stimulant at night — may fragment sleep');
+    else notes.push('rajasic food at the day\'s wind-down — may agitate sleep');
+  }
+
+  // Caffeine timing
+  if(food.caf>30 && (tq==='afternoon'||tq==='night'||tq==='deep_night'||tq==='evening')){
+    score-=1;
+    if(!notes.some(n=>n.includes('stimulant')))notes.push(`caffeine after midday — half-life is 5-6 hours; this stays in the system through sleep`);
+  }
+
+  // Paksha
+  if(isWan && food.weight==='heavy'){
+    score-=1;
+    notes.push('Krishna Paksha invites lighter intake — the moon is waning');
+  }
+
+  // Tithi modifiers
+  if(ti.startsWith('Ekadashi')){
+    score-=2;
+    notes.push('Ekadashi traditionally a fasting day — even light food adds inertia');
+  }
+  if(ti==='Amavasya' && food.weight!=='light'){
+    score-=1;
+    notes.push('Amavasya — the body is most sensitive on new moon. Lighter is wiser');
+  }
+  if(ti==='Purnima' && food.guna==='rajasic'){
+    score-=1;
+    notes.push('Purnima amplifies sensitivity — rajasic food is felt more strongly today');
+  }
+
+  // Cooling foods at night
+  if(food.temp==='cooling'&&(tq==='night'||tq==='deep_night')){
+    score-=0.5;
+    notes.push('cooling food at night may slow agni further');
+  }
+
+  return{
+    score,
+    aligned: score>=1,
+    neutral: score>-1 && score<1,
+    misaligned: score<=-1,
+    note: notes[0]||null,
+    allNotes: notes
+  };
+}
+
+function alignMove(mov, M){
+  const tq=M.tq;
+  let score=0, notes=[];
+  if(mov.intensity==='vigorous'){
+    if(tq==='morning'||tq==='late_morning'||tq==='midday'){score+=1; notes.push('vigorous movement when the body has fire — well-timed')}
+    else if(tq==='night'||tq==='deep_night'){score-=2; notes.push('vigorous movement at night — the nervous system wants down-regulation now, not arousal')}
+    else if(tq==='evening'||tq==='sandhya'){score-=1; notes.push('vigorous movement at the day\'s turn — may delay sleep onset')}
+  }
+  if(mov.vibe==='calming'&&(tq==='evening'||tq==='night')){score+=1}
+  if(mov.vibe==='energizing'&&tq==='brahma_muhurta'){score-=1; notes.push('the body is barely awake — gentler is wiser')}
+  if(M.tithi.n==='Amavasya'&&mov.intensity==='vigorous'){score-=1; notes.push('Amavasya amplifies inwardness — gentler movement aligns')}
+  if(M.tithi.n.startsWith('Ekadashi')&&mov.intensity==='vigorous'){score-=1; notes.push('Ekadashi calls for lightness in body and intake')}
+  return{
+    score,
+    aligned: score>=1, neutral: score>-1&&score<1, misaligned: score<=-1,
+    note: notes[0]||null
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════
+let selected=null, selectedQty=1, selectedKind=null;
+let logToday=[]; // [{kind, item, qty, align, ts}]
+let selMood='';
+
+// Load today's log if it exists
+function loadTodayLog(){
+  const k=dk(new Date()), e=load('ca_v3_log').find(x=>x.dk===k);
+  if(e){logToday=e.items||[]}
+  else{logToday=[]}
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// WITNESSING — search → preview → log
+// ═══════════════════════════════════════════════════════════════════════
+function onWitness(q){
+  const sg=document.getElementById('suggest-list');
+  q=(q||'').trim().toLowerCase();
+  const out=[];
+
+  // Match foods
+  if(q){
+    FOODS.forEach(f=>{if(f.n.toLowerCase().includes(q))out.push({kind:'food',item:f,sortKey:f.n.toLowerCase().indexOf(q)})});
+    MOVES.forEach(m=>{if(m.n.toLowerCase().includes(q))out.push({kind:'move',item:m,sortKey:m.n.toLowerCase().indexOf(q)})});
+    // Sleep number entry
+    const sleepMatch=q.match(/^(\d+(\.\d+)?)\s*h?\s*sleep|sleep\s*(\d+(\.\d+)?)/i);
+    if(sleepMatch){
+      const h=parseFloat(sleepMatch[1]||sleepMatch[3]);
+      out.unshift({kind:'sleep',item:{n:`${h}h sleep last night`,h}});
+    }
+    // Journal entry
+    if(q.includes('journal')||q.includes('thought')||q.includes('feeling')||q.includes('mind')){
+      out.unshift({kind:'mind',item:{n:'a wandering thought'}});
+    }
+  }else{
+    // Show curated few for each category
+    FOODS.slice(0,4).forEach(f=>out.push({kind:'food',item:f,sortKey:0}));
+    MOVES.slice(0,3).forEach(m=>out.push({kind:'move',item:m,sortKey:0}));
+  }
+
+  out.sort((a,b)=>(a.sortKey||0)-(b.sortKey||0));
+  const matches=out.slice(0,8);
+
+  if(!matches.length){
+    sg.innerHTML=`<div class="sg-item" style="cursor:default"><div class="sg-name" style="color:var(--tt);font-style:italic">Not in the database. Try a simpler word, or tap journal to write freely.</div></div>`;
+    sg.classList.add('on');return;
+  }
+  sg.innerHTML=matches.map((m,i)=>{
+    const k=m.kind, it=m.item;
+    const cat=k==='food'?'food':k==='move'?'movement':k==='sleep'?'sleep':'mind';
+    const meta=k==='food'?`${it.q} ${it.u} · ${it.cal} kcal`:k==='move'?`${it.intensity} · ${it.vibe}`:k==='sleep'?'witness':'open journal';
+    return `<div class="sg-item" onclick='pickItem(${i})'><div style="display:flex;align-items:center;flex:1"><span class="sg-cat">${cat}</span><span class="sg-name">${it.n}</span></div><div class="sg-meta">${meta}</div></div>`;
+  }).join('');
+  sg.classList.add('on');
+  window._lastSuggestions=matches;
+}
+
+function pickItem(i){
+  const m=window._lastSuggestions[i]; if(!m)return;
+  selectedKind=m.kind; selected=m.item; selectedQty=1;
+  document.getElementById('suggest-list').classList.remove('on');
+  document.getElementById('witness').value=m.item.n;
+  renderPreview();
+}
+
+function adjQty(d){selectedQty=Math.max(0.5,Math.round((selectedQty+d)*10)/10);renderPreview()}
+
+function clearPreview(){
+  selected=null; selectedKind=null; selectedQty=1;
+  document.getElementById('witness').value='';
+  document.getElementById('preview-area').innerHTML='';
+}
+
+function renderPreview(){
+  const el=document.getElementById('preview-area');
+  if(!selected){el.innerHTML='';return}
+  const M=getMoment();
+
+  if(selectedKind==='food'){
+    const f=selected, m=selectedQty;
+    const align=alignFood(f,M);
+    const alignClass=align.aligned?'aligned':align.misaligned?'misaligned':'';
+    const alignLabel=align.aligned?'Aligned with this moment':align.misaligned?'At cross-purposes with this moment':'Neutral with this moment';
+    const alignNote=align.note?align.note:`This food is in neutral alignment with the current ${M.tq.replace('_',' ')} hour and ${M.tithi.n} tithi.`;
+
+    const microsDisp=f.micros.filter(x=>!/^caffeine_/.test(x)).slice(0,5);
+    const supTags=f.supports.length?f.supports.slice(0,5).map(s=>`<span class="prev-tag s">${fmtTag(s)}</span>`).join(''):'';
+    const wTags=f.weighs.length?f.weighs.slice(0,4).map(w=>`<span class="prev-tag w">${fmtTag(w)}</span>`).join(''):`<span class="prev-tag" style="font-style:italic;color:var(--tt)">nothing significant</span>`;
+    const mTags=microsDisp.map(x=>`<span class="prev-tag m">${fmtTag(x)}</span>`).join('');
+
+    el.innerHTML=`<div class="preview">
+      <div class="prev-name">${f.n}</div>
+      <div class="prev-sub">${f.guna} · ${f.temp} · ${f.weight}</div>
+      <div class="prev-stats">
+        <span class="prev-stat">P <strong>${(f.p*m).toFixed(1)}g</strong></span>
+        <span class="prev-stat">C <strong>${(f.c*m).toFixed(1)}g</strong></span>
+        <span class="prev-stat">F <strong>${(f.f*m).toFixed(1)}g</strong></span>
+        <span class="prev-stat" style="color:var(--gold)"><strong>${Math.round(f.cal*m)} kcal</strong></span>
+      </div>
+      ${mTags?`<div class="prev-row"><div class="prev-row-lbl">Rich in</div><div class="prev-tags">${mTags}</div></div>`:''}
+      <div class="prev-row"><div class="prev-row-lbl">Supports</div><div class="prev-tags">${supTags||'<span class="prev-tag" style="font-style:italic;color:var(--tt)">—</span>'}</div></div>
+      <div class="prev-row"><div class="prev-row-lbl">Weighs on</div><div class="prev-tags">${wTags}</div></div>
+
+      <div class="alignment ${alignClass}">
+        <div class="align-label">${alignLabel}</div>
+        <div class="align-note">${alignNote}</div>
+      </div>
+
+      <div class="prev-actions">
+        <div class="qty-ctl">
+          <button class="qty-btn" onclick="adjQty(-0.5)">−</button>
+          <span class="qty-val">${m===1?f.q:Math.round(f.q*m*10)/10} ${f.u}</span>
+          <button class="qty-btn" onclick="adjQty(0.5)">+</button>
+        </div>
+        <button class="btn btn-pr" onclick="logSelected()" style="margin-left:auto">Add to column</button>
+        <button class="btn-ghost" onclick="clearPreview()">cancel</button>
+      </div>
+    </div>`;
+  }
+  else if(selectedKind==='move'){
+    const mv=selected, m=selectedQty;
+    const align=alignMove(mv,M);
+    const alignClass=align.aligned?'aligned':align.misaligned?'misaligned':'';
+    const alignLabel=align.aligned?'Aligned with this moment':align.misaligned?'At cross-purposes with this moment':'Neutral with this moment';
+    const alignNote=align.note?align.note:`This movement is in neutral alignment with the current ${M.tq.replace('_',' ')} hour.`;
+    const supTags=mv.supports.slice(0,5).map(s=>`<span class="prev-tag s">${fmtTag(s)}</span>`).join('');
+    const wTags=mv.weighs.length?mv.weighs.slice(0,3).map(w=>`<span class="prev-tag w">${fmtTag(w)}</span>`).join(''):'<span class="prev-tag" style="font-style:italic;color:var(--tt)">nothing significant</span>';
+
+    el.innerHTML=`<div class="preview">
+      <div class="prev-name">${mv.n}</div>
+      <div class="prev-sub">${mv.intensity} · ${mv.vibe}</div>
+      <div class="prev-row"><div class="prev-row-lbl">Supports</div><div class="prev-tags">${supTags}</div></div>
+      <div class="prev-row"><div class="prev-row-lbl">Weighs on</div><div class="prev-tags">${wTags}</div></div>
+      <div class="alignment ${alignClass}">
+        <div class="align-label">${alignLabel}</div>
+        <div class="align-note">${alignNote}</div>
+      </div>
+      <div class="prev-actions">
+        <div class="qty-ctl">
+          <button class="qty-btn" onclick="adjQty(-15)">−</button>
+          <span class="qty-val">${Math.round(30*m)} min</span>
+          <button class="qty-btn" onclick="adjQty(15)">+</button>
+        </div>
+        <button class="btn btn-pr" onclick="logSelected()" style="margin-left:auto">Add to column</button>
+        <button class="btn-ghost" onclick="clearPreview()">cancel</button>
+      </div>
+    </div>`;
+  }
+  else if(selectedKind==='sleep'){
+    const it=selected;
+    const note=it.h<6?'Below 7 hours compounds cognitive and emotional cost over time.':it.h<7?'Slightly under the body\'s preferred range.':it.h<9?'In the body\'s natural window for repair.':'Long sleep — usually compensation for prior debt.';
+    el.innerHTML=`<div class="preview">
+      <div class="prev-name">${it.h} hours of sleep</div>
+      <div class="alignment ${it.h>=7&&it.h<=9?'aligned':'misaligned'}">
+        <div class="align-label">${it.h>=7&&it.h<=9?'In rhythm':'Outside the natural window'}</div>
+        <div class="align-note">${note}</div>
+      </div>
+      <div class="prev-actions">
+        <button class="btn btn-pr" onclick="logSelected()" style="margin-left:auto">Add to column</button>
+        <button class="btn-ghost" onclick="clearPreview()">cancel</button>
+      </div>
+    </div>`;
+  }
+  else if(selectedKind==='mind'){
+    el.innerHTML=`<div class="preview">
+      <div class="prev-name">A thought, a feeling, an inner movement</div>
+      <textarea id="mind-text" rows="3" placeholder="what arises..." style="border-bottom-color:var(--bd)"></textarea>
+      <div class="prev-actions">
+        <button class="btn btn-pr" onclick="logMind()" style="margin-left:auto">Witness it</button>
+        <button class="btn-ghost" onclick="clearPreview()">cancel</button>
+      </div>
+    </div>`;
+    setTimeout(()=>{const m=document.getElementById('mind-text');if(m)m.focus()},100);
+  }
+}
+
+function logSelected(){
+  if(!selected||!selectedKind)return;
+  const M=getMoment();
+  let entry={kind:selectedKind,ts:Date.now(),tq:M.tq};
+  if(selectedKind==='food'){
+    const f=selected, m=selectedQty;
+    const a=alignFood(f,M);
+    entry.item={n:f.n,qty:Math.round(f.q*m*10)/10,unit:f.u,p:f.p*m,c:f.c*m,f:f.f*m,cal:Math.round(f.cal*m),guna:f.guna,supports:f.supports,weighs:f.weighs,micros:f.micros,caf:(f.caf||0)*m};
+    entry.align=a;
+  }else if(selectedKind==='move'){
+    const mv=selected, m=selectedQty;
+    const a=alignMove(mv,M);
+    entry.item={n:mv.n,duration:Math.round(30*m),vibe:mv.vibe,intensity:mv.intensity,supports:mv.supports,weighs:mv.weighs};
+    entry.align=a;
+  }else if(selectedKind==='sleep'){
+    entry.item={n:`${selected.h}h sleep last night`,h:selected.h};
+    entry.align={aligned:selected.h>=7&&selected.h<=9, misaligned:selected.h<6, neutral:false};
+  }
+  logToday.push(entry);
+  persistLog();
+  clearPreview();
+  renderLog();
+  renderCoherence();
+  toast('witnessed');
+}
+
+function logMind(){
+  const txt=document.getElementById('mind-text')?.value?.trim();
+  if(!txt){clearPreview();return}
+  const M=getMoment();
+  logToday.push({kind:'mind',ts:Date.now(),tq:M.tq,item:{n:'thought',text:txt},align:{neutral:true}});
+  persistLog();
+  clearPreview();
+  renderLog();
+  toast('witnessed');
+}
+
+function persistLog(){
+  const k=dk(new Date());
+  const all=load('ca_v3_log').filter(e=>e.dk!==k);
+  all.unshift({dk:k,ts:Date.now(),items:logToday});
+  save('ca_v3_log',all.slice(0,365));
+}
+
+function removeLogItem(i){
+  logToday.splice(i,1);
+  persistLog();renderLog();renderCoherence();
+}
+
+const ICONS={
+  food:'<svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  move:'<svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+  mind:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>',
+  sleep:'<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
+  rest:'<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>'
+};
+
+function renderLog(){
+  const el=document.getElementById('log-list');
+  if(!logToday.length){el.innerHTML='<div class="log-empty">Nothing witnessed today yet.</div>';return}
+  el.innerHTML=logToday.map((e,i)=>{
+    const k=e.kind, ic=ICONS[k]||ICONS.mind;
+    const iconCl=k==='sleep'?'rest':k;
+    const time=new Date(e.ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+    let name='', meta='';
+    if(k==='food'){
+      name=`${e.item.n}${e.item.qty?' · '+e.item.qty+' '+e.item.unit:''}`;
+      meta=`${time} · ${Math.round(e.item.cal)} kcal · P${Math.round(e.item.p)} C${Math.round(e.item.c)} F${Math.round(e.item.f)}`;
+    }else if(k==='move'){
+      name=e.item.n; meta=`${time} · ${e.item.duration} min · ${e.item.intensity}`;
+    }else if(k==='sleep'){
+      name=e.item.n; meta=`witnessed ${time}`;
+    }else{
+      name=e.item.text?(e.item.text.length>60?e.item.text.slice(0,60)+'…':e.item.text):'thought witnessed';
+      meta=time;
+    }
+    let aClass='n', aLabel='neutral';
+    if(e.align?.aligned){aClass='a';aLabel='aligned'}
+    else if(e.align?.misaligned){aClass='m';aLabel='off-rhythm'}
+    return `<div class="log-entry">
+      <div class="log-icon ${iconCl}">${ic}</div>
+      <div class="log-body"><div class="log-name">${name}</div><div class="log-meta">${meta}</div></div>
+      <div class="log-align ${aClass}">${aLabel}</div>
+      <button class="log-del" onclick="removeLogItem(${i})">×</button>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// COHERENCE — the column reads itself
+// ═══════════════════════════════════════════════════════════════════════
+function renderCoherence(){
+  const M=getMoment();
+  // Aggregate
+  let alignedCount=0, misCount=0, neuCount=0;
+  const supports={}, weighs={};
+  let foodCount=0, moveCount=0, mindCount=0, sleepHr=null;
+
+  logToday.forEach(e=>{
+    if(e.align?.aligned)alignedCount++;
+    else if(e.align?.misaligned)misCount++;
+    else neuCount++;
+    if(e.kind==='food'||e.kind==='move'){
+      (e.item.supports||[]).forEach(s=>supports[s]=(supports[s]||0)+1);
+      (e.item.weighs||[]).forEach(w=>weighs[w]=(weighs[w]||0)+1);
+    }
+    if(e.kind==='food')foodCount++;
+    if(e.kind==='move')moveCount++;
+    if(e.kind==='mind')mindCount++;
+    if(e.kind==='sleep')sleepHr=e.item.h;
+  });
+
+  // Pull body-feel inputs
+  const cl=+document.getElementById('r-clarity').value;
+  const en=+document.getElementById('r-energy').value;
+  const hy=+document.getElementById('r-hydration').value;
+  const sl=+document.getElementById('r-sleep').value;
+  const st=+document.getElementById('r-stim').value;
+
+  // Compute coherence
+  const total=logToday.length;
+  let score=50;
+  if(total){
+    score = Math.round(((alignedCount*100)+(neuCount*55)+(misCount*15))/total);
+  }
+  // Body-feel modifiers
+  score += Math.round((cl-5)*1.5 + (en-5)*1.5 + (hy>=7?5:hy<=4?-5:0) + (sl>=7&&sl<=9?5:sl<6?-5:0) - (st-5)*1.5);
+  score = Math.max(0,Math.min(100,score));
+
+  document.getElementById('coh-fill').style.width=score+'%';
+  document.getElementById('coh-num').textContent=score;
+
+  // Poem
+  let poem='';
+  if(!total){poem='Begin witnessing to read the day\'s coherence.'}
+  else if(score>=80){poem='The column is well-aligned today. Body, mind, and moment are moving as one current.'}
+  else if(score>=60){poem='Mostly in rhythm. A few choices ran ahead of the body — observe which.'}
+  else if(score>=40){poem='Mixed coherence. The body is asking for slower attention, lighter intake, less performance.'}
+  else{poem='The day moved out of rhythm with this moment. This is information, not failure. Notice what the body was reaching for instead.'}
+  document.getElementById('coh-poem').textContent=poem;
+
+  // Flow tags
+  const fb=document.getElementById('flow-block');
+  if(total){
+    fb.style.display='block';
+    const supTop=Object.entries(supports).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const weiTop=Object.entries(weighs).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    document.getElementById('flow-supports').innerHTML=supTop.length?supTop.map(([t])=>`<span class="prev-tag s">${fmtTag(t)}</span>`).join(''):'<span class="prev-tag" style="font-style:italic;color:var(--tt)">—</span>';
+    document.getElementById('flow-weighs').innerHTML=weiTop.length?weiTop.map(([t])=>`<span class="prev-tag w">${fmtTag(t)}</span>`).join(''):'<span class="prev-tag" style="font-style:italic;color:var(--tt)">nothing significant</span>';
+  } else {
+    fb.style.display='none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// THE NOW SECTION
+// ═══════════════════════════════════════════════════════════════════════
+function renderNow(){
+  const now=new Date();
+  const M=getMoment(now);
+  const greet=M.tq==='brahma_muhurta'?'In Brahma muhurta':M.tq==='morning'?'Morning':M.tq==='late_morning'?'Late morning':M.tq==='midday'?'Midday':M.tq==='afternoon'?'Afternoon':M.tq==='sandhya'?'Sandhya':M.tq==='night'?'Evening':'Deep night';
+
+  document.getElementById('now-date').textContent=now.toLocaleDateString('en-IN',{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('now-greet').textContent=greet;
+
+  // Hora arc — sun position
+  const h=now.getHours()+now.getMinutes()/60;
+  const{srHr,ssHr}=M.sun;
+  let pct;
+  if(h>=srHr&&h<=ssHr){
+    pct=((h-srHr)/(ssHr-srHr))*100;
+    document.getElementById('hora-mark').className='hora-marker';
+  }else{
+    // Night arc
+    if(h<srHr) pct=((h+24-ssHr)/(24-(ssHr-srHr)))*100;
+    else pct=((h-ssHr)/(24-(ssHr-srHr)))*100;
+    document.getElementById('hora-mark').className='hora-marker moon';
+  }
+  document.getElementById('hora-mark').style.left=Math.max(0,Math.min(100,pct))+'%';
+
+  // Invitation
+  const inv=deriveInvitation(M);
+  document.getElementById('invit-quality').textContent=inv.quality;
+  document.getElementById('invit-text').textContent=inv.text;
+  document.getElementById('invit-body').textContent=inv.body;
+
+  // Panchang
+  document.getElementById('p-tithi').textContent=M.tithi.n;
+  document.getElementById('p-paksha').textContent=M.tithi.paksha+' Paksha';
+  document.getElementById('p-naksh').textContent=M.naksh.n;
+  document.getElementById('p-naksh-lord').textContent=M.naksh.l;
+  document.getElementById('p-moon').textContent=M.moon.name;
+  document.getElementById('p-moon-pct').textContent=M.moon.illum+'% illuminated';
+  document.getElementById('p-vaara').textContent=M.vaara.n.replace('vara','');
+  document.getElementById('p-vaara-d').textContent=M.vaara.d.split('.')[0];
+  document.getElementById('p-yoga').textContent=M.yoga;
+  document.getElementById('p-karana').textContent=M.karana;
+
+  // Ambient color shift based on time
+  const amb1=document.getElementById('amb1'), amb2=document.getElementById('amb2'), amb3=document.getElementById('amb3');
+  if(M.tq==='brahma_muhurta'||M.tq==='deep_night'){
+    amb1.style.background='#3a3a8a'; amb2.style.background='#1a1a4a'; amb3.style.background='#2a2a6a';
+  }else if(M.tq==='morning'||M.tq==='late_morning'){
+    amb1.style.background='#d4a85a'; amb2.style.background='#7a9fff'; amb3.style.background='#d47a90';
+  }else if(M.tq==='midday'){
+    amb1.style.background='#7a9fff'; amb2.style.background='#5aaf80'; amb3.style.background='#d4a85a';
+  }else if(M.tq==='afternoon'){
+    amb1.style.background='#d4a85a'; amb2.style.background='#9a7fd4'; amb3.style.background='#d47a90';
+  }else if(M.tq==='sandhya'){
+    amb1.style.background='#d47a90'; amb2.style.background='#7a3a8a'; amb3.style.background='#d4a85a';
+  }else{
+    amb1.style.background='#7a9fff'; amb2.style.background='#5020c0'; amb3.style.background='#1a2860';
+  }
+
+  // CM data update
+  document.getElementById('cm-data').textContent=`${M.naksh.n} · ${M.tithi.n} · ${M.moon.name}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SAVE DAY (full witness — body-feel + journal)
+// ═══════════════════════════════════════════════════════════════════════
+function saveDay(){
+  const k=dk(new Date());
+  const M=getMoment();
+  const entry={
+    dk:k, ts:Date.now(),
+    items:logToday,
+    clarity:+document.getElementById('r-clarity').value,
+    energy:+document.getElementById('r-energy').value,
+    hydration:+document.getElementById('r-hydration').value,
+    sleep:+document.getElementById('r-sleep').value,
+    stimulation:+document.getElementById('r-stim').value,
+    mood:selMood,
+    reflection:document.getElementById('refl').value.trim(),
+    nakshatra:M.naksh.n, tithi:M.tithi.n, moonPhase:M.moon.name, paksha:M.paksha,
+    coherence:+document.getElementById('coh-num').textContent
+  };
+  const all=load('ca_v3_days').filter(e=>e.dk!==k);
+  all.unshift(entry);
+  save('ca_v3_days',all.slice(0,365));
+  // Also persist log
+  const allLog=load('ca_v3_log').filter(e=>e.dk!==k);
+  allLog.unshift({dk:k,ts:Date.now(),items:logToday});
+  save('ca_v3_log',allLog.slice(0,365));
+  toast('the day is witnessed');
+  renderRhythm();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RHYTHM READ — the column across days
+// ═══════════════════════════════════════════════════════════════════════
+function renderRhythm(){
+  const days=load('ca_v3_days');
+  const strip=document.getElementById('week-strip');
+  strip.innerHTML='';
+  const cells=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const k=dk(d);
+    const e=days.find(x=>x.dk===k);
+    const c=e?e.coherence||0:0;
+    const op=e?Math.max(.15,c/100):.05;
+    const cell=document.createElement('div'); cell.className='week-cell';
+    cell.style.background=`rgba(122,159,255,${op})`;
+    cell.title=`${d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric'})}: ${c||'no log'}`;
+    const lbl=document.createElement('div'); lbl.className='week-cell-lbl'; lbl.textContent=d.toLocaleDateString('en-IN',{weekday:'short'}).slice(0,1);
+    cell.appendChild(lbl);
+    strip.appendChild(cell);
+    cells.push(c);
+  }
+
+  const note=document.getElementById('week-note');
+  const valid=cells.filter(c=>c>0);
+  if(!valid.length){note.textContent='Witness a few days to begin reading the rhythm.';document.getElementById('rhythm-obs').innerHTML='';return}
+  const avg=valid.reduce((a,b)=>a+b,0)/valid.length;
+  const last=cells[cells.length-1]||0, first=cells[0]||0;
+  let n='';
+  if(valid.length<3)n=`Average coherence ${Math.round(avg)}. Witness a few more days for the rhythm to emerge.`;
+  else if(last-first>15)n=`Coherence is rising across the week (${Math.round(first)} → ${Math.round(last)}). The column is finding its alignment.`;
+  else if(first-last>15)n=`Coherence has dropped this week (${Math.round(first)} → ${Math.round(last)}). Information, not failure. Notice what shifted in food, sleep, or stimulation.`;
+  else n=`Coherence is steady around ${Math.round(avg)} this week. The rhythm is establishing.`;
+  note.textContent=n;
+
+  // Cross-day pattern observations
+  const obs=[];
+  // Sleep correlation
+  const sleepDays=days.slice(0,7).filter(e=>e.sleep);
+  if(sleepDays.length>=3){
+    const lowSleep=sleepDays.filter(e=>e.sleep<6.5);
+    if(lowSleep.length>=2){
+      const lowAvgCoh=lowSleep.reduce((s,e)=>s+(e.coherence||0),0)/lowSleep.length;
+      obs.push(`<div class="rhythm-card"><div class="lbl" style="color:var(--acc)">Sleep & coherence</div><div class="body" style="margin-top:6px">On ${lowSleep.length} days with sleep below 6.5h, average coherence was ${Math.round(lowAvgCoh)}. Sleep tends to lead — clarity and emotional steadiness follow 1–2 days after.</div></div>`);
+    }
+  }
+  // Stimulation correlation
+  const highStim=days.slice(0,7).filter(e=>e.stimulation>=7);
+  if(highStim.length>=2){
+    const cohAvg=highStim.reduce((s,e)=>s+(e.coherence||0),0)/highStim.length;
+    obs.push(`<div class="rhythm-card"><div class="lbl" style="color:var(--pur)">Stimulation</div><div class="body" style="margin-top:6px">On ${highStim.length} high-stimulation days this week, average coherence was ${Math.round(cohAvg)}. Stimulation load fragments the column — observed, not prescribed.</div></div>`);
+  }
+  // Food alignment
+  const allItems=days.slice(0,7).flatMap(e=>e.items||[]);
+  const foodMis=allItems.filter(e=>e.kind==='food'&&e.align?.misaligned).length;
+  const foodTotal=allItems.filter(e=>e.kind==='food').length;
+  if(foodTotal>=5){
+    const pct=Math.round(foodMis/foodTotal*100);
+    if(pct>30)obs.push(`<div class="rhythm-card"><div class="lbl" style="color:var(--gold)">Food rhythm</div><div class="body" style="margin-top:6px">${pct}% of foods this week were logged at hours that don't match the body's agni cycle. The strongest leverage is timing, not type — the same food at midday vs night arrives differently.</div></div>`);
+  }
+  // Movement presence
+  const moveDays=days.slice(0,7).filter(e=>(e.items||[]).some(i=>i.kind==='move'));
+  if(moveDays.length>=3){
+    const otherDays=days.slice(0,7).filter(e=>!(e.items||[]).some(i=>i.kind==='move'));
+    if(otherDays.length){
+      const moveAvg=moveDays.reduce((s,e)=>s+(e.coherence||0),0)/moveDays.length;
+      const otherAvg=otherDays.reduce((s,e)=>s+(e.coherence||0),0)/otherDays.length;
+      if(moveAvg-otherAvg>10)obs.push(`<div class="rhythm-card"><div class="lbl" style="color:var(--amb)">Movement & column</div><div class="body" style="margin-top:6px">Days with logged movement averaged ${Math.round(moveAvg)} coherence vs ${Math.round(otherAvg)} on stationary days. The body is one of the column's central pillars.</div></div>`);
+    }
+  }
+
+  document.getElementById('rhythm-obs').innerHTML=obs.join('') || `<div class="rhythm-card"><div class="lbl">Observation</div><div class="body" style="margin-top:6px">Witness 5+ days for the column's emergent patterns to become legible.</div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AI RHYTHM READING (optional, requires API key)
+// ═══════════════════════════════════════════════════════════════════════
+async function generateAI(){
+  const apiKey=getApi();
+  const out=document.getElementById('ai-output');
+  if(!apiKey){
+    out.innerHTML=`<div class="rhythm-card"><div class="lbl" style="color:var(--rose)">API key needed</div><div class="body" style="margin-top:6px">Add your Anthropic API key in settings to unlock AI rhythm reading. Stored only on this device.</div></div>`;
+    return;
+  }
+  const days=load('ca_v3_days').slice(0,14);
+  const summary=days.map(d=>({date:d.dk,coherence:d.coherence,clarity:d.clarity,energy:d.energy,sleep:d.sleep,hydration:d.hydration,stimulation:d.stimulation,mood:d.mood,nakshatra:d.nakshatra,tithi:d.tithi,paksha:d.paksha,foods:(d.items||[]).filter(i=>i.kind==='food').map(i=>({n:i.item.n,guna:i.item.guna,tq:i.tq,aligned:i.align?.aligned,misaligned:i.align?.misaligned})),moves:(d.items||[]).filter(i=>i.kind==='move').map(i=>({n:i.item.n,intensity:i.item.intensity,tq:i.tq}))}));
+  out.innerHTML=`<div class="rhythm-card"><div class="body italic" style="color:var(--ts)">reading the rhythm…</div></div>`;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:'You are the rhythm reader of Cosmic Align — a consciousness instrument. The user is observing their column: panchang at the bottom, body in the middle, awareness at the top. You read patterns across days. Tone: calm, intelligent, observational, never prescriptive, never mystical, never fearful. Reference panchang where it enriches the read (tithi, nakshatra, paksha) but never as causal claim. Use phrases like "appears correlated", "may suggest", "worth observing". Generate 3-4 woven paragraphs — one column-level read, then specific observations across body-mind-cosmos. Do not use headers or lists. Write as continuous prose.',messages:[{role:'user',content:'Read this person\'s 14-day column. Tell them what is emerging across body, food, movement, sleep, stimulation, mood, and panchang cycles. What is the column doing? What is its leading edge? What is its trailing weight?\n\nData:\n'+JSON.stringify(summary,null,1)}]})
+    });
+    const data=await resp.json();
+    if(data.content&&data.content[0]){
+      const text=data.content[0].text;
+      const paragraphs=text.split(/\n\n+/).filter(p=>p.trim());
+      out.innerHTML=`<div class="rhythm-card"><div class="lbl" style="color:var(--rose)">AI rhythm reading</div>`+paragraphs.map(p=>`<div class="body" style="margin-top:14px;line-height:1.8">${p}</div>`).join('')+'</div>';
+    }else{
+      out.innerHTML=`<div class="rhythm-card"><div class="lbl">Error</div><div class="body">${data.error?.message||'something went wrong'}</div></div>`;
+    }
+  }catch(e){
+    out.innerHTML=`<div class="rhythm-card"><div class="lbl">Connection error</div><div class="body">${e.message}</div></div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONSCIOUSNESS MODE
+// ═══════════════════════════════════════════════════════════════════════
+const CM_PROMPTS=['What is present in this moment that requires no addition?','Where in the body is awareness resting right now?','What is aware of these breath cycles?','What remains when the noise of becoming settles?','Is the observer also observed?','What would this moment be without any interpretation?','Who is reading these words?'];
+let cmInt=null;
+function enterCM(){
+  document.getElementById('cm').classList.add('on');
+  let pi=0;const el=document.getElementById('cm-prompt');
+  const show=()=>{el.style.opacity='0';setTimeout(()=>{el.textContent=CM_PROMPTS[pi%CM_PROMPTS.length];el.style.opacity='1';pi++},700)};
+  show(); cmInt=setInterval(show,12000);
+}
+function exitCM(){document.getElementById('cm').classList.remove('on');if(cmInt)clearInterval(cmInt)}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SETTINGS / DATA
+// ═══════════════════════════════════════════════════════════════════════
+function openSettings(){
+  document.getElementById('settings').classList.add('on');
+  document.getElementById('s-lat').value=getLat();
+  document.getElementById('s-lng').value=getLng();
+  const k=getApi();if(k)document.getElementById('s-api').value=k;
+}
+function closeSettings(){document.getElementById('settings').classList.remove('on')}
+function saveSettings(){
+  const lat=document.getElementById('s-lat').value, lng=document.getElementById('s-lng').value;
+  const k=document.getElementById('s-api').value.trim();
+  if(lat)localStorage.setItem('ca_lat',lat);
+  if(lng)localStorage.setItem('ca_lng',lng);
+  if(k)localStorage.setItem('ca_api',k);
+  closeSettings(); renderNow(); toast('saved');
+}
+function exportData(){
+  const data={days:load('ca_v3_days'),logs:load('ca_v3_log'),exported:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`cosmic-align-${dk(new Date())}.json`;a.click();
+  toast('exported');
+}
+function clearAll(){
+  if(!confirm('Clear all witnessed data? This cannot be undone.'))return;
+  ['ca_v3_days','ca_v3_log'].forEach(k=>localStorage.removeItem(k));
+  logToday=[]; renderLog(); renderCoherence(); renderRhythm(); toast('cleared');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MOOD / REFLECTION
+// ═══════════════════════════════════════════════════════════════════════
+const MOODS=['expansive','grounded','restless','inward','turbulent','luminous','contracted','flowing'];
+const REFL=['What repeated emotional pattern appeared today?','Where did attention leak, and what was pulling it?','What felt deeply aligned with your inner direction?','Which moment asked for more presence than you gave?','What were you avoiding, and what does that reveal?','What did stillness reveal that movement obscured?','Where did you perform rather than inhabit your experience?','What surprised you about your own inner state today?','What belief was operating beneath your choices today?'];
+
+function buildMoods(){
+  document.getElementById('mood-row').innerHTML=MOODS.map(m=>`<button class="mood-chip" onclick="pickMood(this,'${m}')">${m}</button>`).join('');
+}
+function pickMood(btn,m){
+  document.querySelectorAll('.mood-chip').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel'); selMood=m;
+}
+function newRefl(){
+  const el=document.getElementById('refl-prompt');
+  el.style.opacity='.3';
+  setTimeout(()=>{el.textContent=REFL[Math.floor(Math.random()*REFL.length)];el.style.opacity='1'},250);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════════
+function upR(inp,outId){document.getElementById(outId).textContent=inp.value;renderCoherence()}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),1800)}
+function enterApp(){document.getElementById('ob').classList.add('hide');setTimeout(()=>{document.getElementById('ob').style.display='none'},800);localStorage.setItem('ca_v3_ob','1')}
+
+// Suggest list close on outside click
+document.addEventListener('click',e=>{
+  const sg=document.getElementById('suggest-list'), w=document.getElementById('witness');
+  if(sg&&!sg.contains(e.target)&&e.target!==w)sg.classList.remove('on');
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',()=>{
+  if(localStorage.getItem('ca_v3_ob')==='1'){const ob=document.getElementById('ob');if(ob)ob.style.display='none'}
+  renderNow();
+  loadTodayLog();
+  renderLog();
+  renderCoherence();
+  buildMoods();
+  newRefl();
+  renderRhythm();
+  // Refresh now-section every 5 minutes so panchang/invitation stay current
+  setInterval(renderNow,5*60*1000);
+});
+</script>
+</body>
+</html>
